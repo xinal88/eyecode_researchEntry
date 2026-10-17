@@ -1,0 +1,98 @@
+[
+  {
+    "config": "real25",
+    "seeds": 4,
+    "n_real": 25,
+    "n_neural": 0,
+    "coverage_mean": 0.5258910529241636,
+    "coverage_std": 0.027723943733318768,
+    "success": 0.1,
+    "success_lo": 0.06566994117157123,
+    "success_hi": 0.14940686356308552,
+    "episodes": 200
+  },
+  {
+    "config": "real25_dream100",
+    "seeds": 2,
+    "n_real": 25,
+    "n_neural": 100,
+    "coverage_mean": 0.5501573862837914,
+    "coverage_std": 0.026157351369822533,
+    "success": 0.04,
+    "success_lo": 0.015663050551848016,
+    "success_hi": 0.09837217232607373,
+    "episodes": 100
+  },
+  {
+    "config": "real25_dream300",
+    "seeds": 3,
+    "n_real": 25,
+    "n_neural": 300,
+    "coverage_mean": 0.6270812289210261,
+    "coverage_std": 0.018785885382376355,
+    "success": 0.10666666666666667,
+    "success_lo": 0.06672979536363804,
+    "success_hi": 0.16624750076432737,
+    "episodes": 150
+  },
+  {
+    "config": "real25_dream1000",
+    "seeds": 1,
+    "n_real": 25,
+    "n_neural": 1000,
+    "coverage_mean": 0.6259188436451693,
+    "coverage_std": 0.0,
+    "success": 0.06,
+    "success_lo": 0.020614596364630478,
+    "success_hi": 0.16217343370877002,
+    "episodes": 50
+  },
+  {
+    "config": "real25_dream300pa",
+    "seeds": 2,
+    "n_real": 25,
+    "n_neural": 322,
+    "coverage_mean": 0.5536993326347095,
+    "coverage_std": 0.06456617807932284,
+    "success": 0.05,
+    "success_lo": 0.02154336145631356,
+    "success_hi": 0.11175196527208817,
+    "episodes": 100
+  },
+  {
+    "config": "real25_scratchdream300",
+    "seeds": 1,
+    "n_real": 25,
+    "n_neural": 300,
+    "coverage_mean": 0.5726429367205842,
+    "coverage_std": 0.0,
+    "success": 0.1,
+    "success_lo": 0.04347512399157111,
+    "success_hi": 0.2136049033478839,
+    "episodes": 50
+  },
+  {
+    "config": "dream300_only",
+    "seeds": 1,
+    "n_real": 0,
+    "n_neural": 300,
+    "coverage_mean": 0.20816105957455555,
+    "coverage_std": 0.0,
+    "success": 0.0,
+    "success_lo": 0.0,
+    "success_hi": 0.07135003417431873,
+    "episodes": 50
+  },
+  {
+    "config": "real186_upper",
+    "seeds": 1,
+    "n_real": 186,
+    "n_neural": 0,
+    "coverage_mean": 0.8596423890610368,
+    "coverage_std": 0.0,
+    "success": 0.4,
+    "success_lo": 0.2760818978624575,
+    "success_hi": 0.5381881089724063,
+    "episodes": 50
+  }
+]

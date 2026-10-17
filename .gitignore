@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+data/*.npz
+data/*.npy
+data/*.pt
+data/lerobot_pusht/
+checkpoints/
+third_party/drive/
+third_party/hiwonder_sim/*.zip
+part1_rosorin_sim/ws/build/
+part1_rosorin_sim/ws/install/
+part1_rosorin_sim/ws/log/
+part1_rosorin_sim/logs/
+*.log

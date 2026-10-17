@@ -1,0 +1,1 @@
+[{"step": 2000, "loss": 0.1671, "val_psnr": 25.55, "val_ssim": 0.917}, {"step": 4000, "loss": 0.1333, "val_psnr": 26.28, "val_ssim": 0.9259}, {"step": 6000, "loss": 0.0931, "val_psnr": 26.24, "val_ssim": 0.926}, {"step": 8000, "loss": 0.096, "val_psnr": 26.24, "val_ssim": 0.9255}]

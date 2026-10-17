@@ -1,0 +1,163 @@
+diff -ru -x __pycache__ official/robot_gazebo/config/slam.yaml patched/robot_gazebo/config/slam.yaml
+--- official/robot_gazebo/config/slam.yaml	2025-11-23 12:04:14.000000000 +0700
++++ patched/robot_gazebo/config/slam.yaml	2026-10-17 22:58:13.558042415 +0700
+@@ -39,18 +39,18 @@
+     # General Parameters
+     use_scan_matching: true
+     use_scan_barycenter: true
+-    minimum_travel_distance: 0.0
+-    minimum_travel_heading: 0.01
++    minimum_travel_distance: 0.1   # [patch P9] was 0.0
++    minimum_travel_heading: 0.1    # [patch P9] was 0.01
+     scan_buffer_size: 20
+     scan_buffer_maximum_scan_distance: 12.0
+     link_match_minimum_response_fine: 0.1
+     link_scan_maximum_distance: 1.5
+     loop_search_maximum_distance: 3.0
+     do_loop_closing: true
+-    loop_match_minimum_chain_size: 10
++    loop_match_minimum_chain_size: 15   # [patch P9] was 10
+     loop_match_maximum_variance_coarse: 3.0
+     loop_match_minimum_response_coarse: 0.35
+-    loop_match_minimum_response_fine: 0.45
++    loop_match_minimum_response_fine: 0.6   # [patch P9] was 0.45
+ 
+     # Correlation Parameters - Correlation Parameters
+     correlation_search_space_dimension: 0.5
+@@ -63,11 +63,11 @@
+     loop_search_space_smear_deviation: 0.03
+ 
+     # Scan Matcher Parameters
+-    distance_variance_penalty: 0.5
+-    angle_variance_penalty: 1.0
++    distance_variance_penalty: 1.0   # [patch P9] was 0.5: trust the (good) odometry more
++    angle_variance_penalty: 3.0   # [patch P9] was 1.0
+ 
+     fine_search_angle_offset: 0.00349
+-    coarse_search_angle_offset: 0.349
++    coarse_search_angle_offset: 0.175   # [patch P9] was 0.349 (±20 deg): a 156 deg LiDAR facing one wall matched wrong rotations
+     coarse_angle_resolution: 0.0349
+     minimum_angle_penalty: 0.9
+     minimum_distance_penalty: 0.5
+diff -ru -x __pycache__ official/robot_gazebo/launch/include/navigation.launch.py patched/robot_gazebo/launch/include/navigation.launch.py
+--- official/robot_gazebo/launch/include/navigation.launch.py	2025-11-27 15:39:30.000000000 +0700
++++ patched/robot_gazebo/launch/include/navigation.launch.py	2026-10-17 22:58:25.762287538 +0700
+@@ -46,7 +46,10 @@
+     container_name_full = (namespace, '/', container_name)
+     use_respawn = LaunchConfiguration('use_respawn')
+     log_level = LaunchConfiguration('log_level')
+-    map_name = LaunchConfiguration('map', default='map_01')
++    map_name = LaunchConfiguration('map', default='map_01').perform(context)
++    # [patch P7] accept a bare map name (as documented) as well as a full yaml path
++    if not map_name.endswith('.yaml'):
++        map_name = os.path.join(os.environ.get('ROSORIN_MAP_DIR', os.path.join(robot_gazebo_dir, 'maps')), map_name + '.yaml')
+ 
+ 
+     lifecycle_nodes = ['controller_server',
+@@ -282,7 +285,7 @@
+                 PathJoinSubstitution(
+                     [robot_gazebo_dir, 'launch', 'include/localization.launch.py'])),
+                 launch_arguments={'namespace': namespace,
+-                                'map': LaunchConfiguration('map'),
++                                'map': map_name,
+                                 'use_sim_time': use_sim_time,
+                                 'params_file': LaunchConfiguration('params_file')}.items()),
+     ])
+diff -ru -x __pycache__ official/robot_gazebo/launch/room_worlds.launch.py patched/robot_gazebo/launch/room_worlds.launch.py
+--- official/robot_gazebo/launch/room_worlds.launch.py	2025-11-27 15:15:40.000000000 +0700
++++ patched/robot_gazebo/launch/room_worlds.launch.py	2026-10-17 22:58:13.558042415 +0700
+@@ -21,7 +21,7 @@
+ 
+ 
+     # get the package directory
+-    pkg_share_dir = get_package_share_directory('holonomic_sim')
++    # [patch P1] removed: get_package_share_directory('holonomic_sim') (package not shipped)
+     robot_gazebo_path = get_package_share_directory('robot_gazebo')
+ 
+ 
+@@ -39,6 +39,8 @@
+             ),
+         launch_arguments={
+             'use_sim_time': use_sim_time,
++            'nav': nav,  # [patch P2] forward nav so /cmd_vel is remapped to the robot
++            'map_tf': LaunchConfiguration('map_tf', default='true').perform(context),  # [patch P3]
+         }.items(),
+     )
+ 
+diff -ru -x __pycache__ official/robot_gazebo/launch/ros_ign_bridge.launch.py patched/robot_gazebo/launch/ros_ign_bridge.launch.py
+--- official/robot_gazebo/launch/ros_ign_bridge.launch.py	2025-11-27 15:21:02.000000000 +0700
++++ patched/robot_gazebo/launch/ros_ign_bridge.launch.py	2026-10-17 22:58:13.558042415 +0700
+@@ -13,6 +13,9 @@
+     nav = LaunchConfiguration('nav', default='false').perform(context)
+     nav_arg = DeclareLaunchArgument('nav',default_value=nav)
+ 
++    # [patch P3] only publish the identity map->odom TF when no SLAM/localisation runs
++    map_tf = LaunchConfiguration('map_tf', default='true').perform(context)
++
+     remappings_default = [("/odom/tf", "tf")]
+     if nav == 'true':
+         remappings_default += [("/controller/cmd_vel", "/cmd_vel")]
+@@ -54,8 +57,7 @@
+     return [
+         use_sim_time_arg,
+         bridge,
+-        map_static_tf
+-    ]
++    ] + ([map_static_tf] if map_tf == 'true' else [])
+ 
+ 
+ def generate_launch_description():
+diff -ru -x __pycache__ official/robot_gazebo/launch/worlds.launch.py patched/robot_gazebo/launch/worlds.launch.py
+--- official/robot_gazebo/launch/worlds.launch.py	2025-11-23 12:04:14.000000000 +0700
++++ patched/robot_gazebo/launch/worlds.launch.py	2026-10-17 22:58:13.558042415 +0700
+@@ -24,7 +24,7 @@
+ 
+ 
+     # get the package directory
+-    pkg_share_dir = get_package_share_directory('holonomic_sim')
++    # [patch P1] removed: get_package_share_directory('holonomic_sim') (package not shipped)
+     robot_gazebo_path = get_package_share_directory('robot_gazebo')
+ 
+ 
+@@ -43,6 +43,8 @@
+             ),
+         launch_arguments={
+             'use_sim_time': use_sim_time,
++            'nav': nav,  # [patch P2] forward nav so /cmd_vel is remapped to the robot
++            'map_tf': LaunchConfiguration('map_tf', default='true').perform(context),  # [patch P3]
+         }.items(),
+     )
+ 
+diff -ru -x __pycache__ official/robot_gazebo/urdf/robot.gazebo.xacro patched/robot_gazebo/urdf/robot.gazebo.xacro
+--- official/robot_gazebo/urdf/robot.gazebo.xacro	2025-11-27 15:28:16.000000000 +0700
++++ patched/robot_gazebo/urdf/robot.gazebo.xacro	2026-10-17 23:25:47.818524651 +0700
+@@ -11,6 +11,8 @@
+     
+     <!-- lidar -->
+     <xacro:include filename="$(find robot_gazebo)/urdf/lidar.gazebo.xacro"/>
++    <!-- imu  [patch P8] imu.gazebo.xacro was shipped but never included -> /imu had no publisher -->
++    <xacro:include filename="$(find robot_gazebo)/urdf/imu.gazebo.xacro"/>
+     <!-- camera -->
+     <xacro:include filename="$(find robot_gazebo)/urdf/camera.gazebo.xacro"/>
+ 
+@@ -63,7 +65,7 @@
+         <wheelbase>0.3</wheelbase>
+         <wheel_radius>0.05</wheel_radius>
+ 	<topic>/controller/cmd_vel</topic>
+-        <odom_topic>/odom</odom_topic>
++        <odom_topic>/wheel_odom</odom_topic> <!-- [patch P5] was /odom, clashed with OdometryPublisher -->
+         <frame_id>odom</frame_id>
+         <child_frame_id>base_link</child_frame_id>
+         </plugin>
+diff -ru -x __pycache__ official/robot_gazebo/urdf/wheel.xacro patched/robot_gazebo/urdf/wheel.xacro
+--- official/robot_gazebo/urdf/wheel.xacro	2025-11-23 12:04:14.000000000 +0700
++++ patched/robot_gazebo/urdf/wheel.xacro	2026-10-17 23:25:47.818524651 +0700
+@@ -41,7 +41,7 @@
+     <gazebo reference="${name}_link">
+       <mu1>10.0</mu1> 
+       <mu2>10.0</mu2>
+-      <kp>1000000000.0.0</kp>
++      <kp>1000000000.0</kp> <!-- [patch P6] was 1000000000.0.0 -->
+       <kd>100000.0</kd>      
+       <minDepth>0.0001</minDepth>
+     </gazebo>

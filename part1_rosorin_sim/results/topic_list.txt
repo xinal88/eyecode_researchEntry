@@ -1,0 +1,14 @@
+/clock
+/controller/cmd_vel
+/depth_cam/depth_cam
+/depth_cam/rgb/camera_info
+/imu
+/joint_states
+/odom
+/parameter_events
+/robot_description
+/rosout
+/scan
+/scan/points
+/tf
+/tf_static

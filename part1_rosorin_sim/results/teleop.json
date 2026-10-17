@@ -1,0 +1,162 @@
+{
+  "segments": [
+    {
+      "name": "forward",
+      "cmd": [
+        0.3,
+        0.0,
+        0.0
+      ],
+      "pose_before": [
+        0.0,
+        -0.0,
+        -0.0
+      ],
+      "pose_after": [
+        0.266,
+        -0.0,
+        -0.0
+      ]
+    },
+    {
+      "name": "rotate left",
+      "cmd": [
+        0.0,
+        0.0,
+        0.8
+      ],
+      "pose_before": [
+        0.266,
+        -0.0,
+        -0.0
+      ],
+      "pose_after": [
+        0.274,
+        0.006,
+        60.1
+      ]
+    },
+    {
+      "name": "strafe left (mecanum)",
+      "cmd": [
+        0.0,
+        0.25,
+        0.0
+      ],
+      "pose_before": [
+        0.274,
+        0.006,
+        60.1
+      ],
+      "pose_after": [
+        0.271,
+        0.006,
+        65.2
+      ]
+    },
+    {
+      "name": "strafe right (mecanum)",
+      "cmd": [
+        0.0,
+        -0.25,
+        0.0
+      ],
+      "pose_before": [
+        0.271,
+        0.006,
+        65.2
+      ],
+      "pose_after": [
+        0.283,
+        0.031,
+        65.2
+      ]
+    },
+    {
+      "name": "diagonal",
+      "cmd": [
+        0.2,
+        0.2,
+        0.0
+      ],
+      "pose_before": [
+        0.283,
+        0.031,
+        65.2
+      ],
+      "pose_after": [
+        0.41,
+        0.306,
+        65.2
+      ]
+    },
+    {
+      "name": "arc",
+      "cmd": [
+        0.25,
+        0.0,
+        -0.6
+      ],
+      "pose_before": [
+        0.41,
+        0.306,
+        65.2
+      ],
+      "pose_after": [
+        0.625,
+        0.475,
+        -5.9
+      ]
+    },
+    {
+      "name": "backward",
+      "cmd": [
+        -0.25,
+        0.0,
+        0.0
+      ],
+      "pose_before": [
+        0.625,
+        0.475,
+        -5.9
+      ],
+      "pose_after": [
+        0.44,
+        0.505,
+        -8.1
+      ]
+    },
+    {
+      "name": "stop",
+      "cmd": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pose_before": [
+        0.44,
+        0.505,
+        -8.1
+      ],
+      "pose_after": [
+        0.435,
+        0.506,
+        -8.1
+      ]
+    }
+  ],
+  "sensor_rates_hz_wall": {
+    "scan": 3.8,
+    "points": 3.8,
+    "imu": 0.0,
+    "odom": 12.4
+  },
+  "scan": {
+    "frame": "lidar_frame",
+    "n_beams": 270,
+    "valid": 258,
+    "fov_deg": 156.14589718176697,
+    "min_range": 0.8735181093215942,
+    "max_range_cfg": 12.0
+  }
+}
