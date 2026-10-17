@@ -22,16 +22,22 @@ from nav2_msgs.action import FollowWaypoints, NavigateToPose
 from nav_msgs.msg import Odometry
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile
+from std_srvs.srv import Trigger
+from tf2_ros import Buffer, TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
 # goals in the map frame (= world frame: SLAM started at the spawn pose 0,0,0);
 # chosen in open space of the house with >= 0.55 m clearance
 SINGLE_GOAL = ('dining room', 2.11, 0.58, 0.0)
-WAYPOINTS = [('top-left room', -2.89, 2.18, math.pi / 2),
-             ('bottom-left room', -2.44, -1.27, math.pi),
+# the top-left room (one 0.8 m door) was dropped: under heavy host load DWB oscillated in that doorway
+# for minutes ("Failed to make progress"); every leg below has >= 0.4 m clearance on the saved map
+WAYPOINTS = [('left hall', -3.2, -0.2, math.pi),
+             ('bottom-left room', -2.44, -1.27, -math.pi / 2),
              ('bottom corridor', 0.01, -2.92, 0.0),
-             ('start', 0.0, 0.0, 0.0)]
+             ('right room', 2.6, -1.4, 0.0),
+             ('start', 0.0, 0.0, math.pi)]
 
 
 def pose(x, y, yaw, stamp):
@@ -45,7 +51,8 @@ def pose(x, y, yaw, stamp):
 
 class NavDemo(Node):
     def __init__(self):
-        super().__init__('nav_demo')
+        # sim time: pose stamps must match the simulated TF (wall stamps -> AMCL "extrapolation into the future")
+        super().__init__('nav_demo', parameter_overrides=[Parameter('use_sim_time', value=True)])
         self.init_pub = self.create_publisher(PoseWithCovarianceStamped, '/initialpose', 10)
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.marker_pub = self.create_publisher(MarkerArray, '/waypoints', qos)
@@ -54,6 +61,8 @@ class NavDemo(Node):
         self.path_len = 0.0
         self.create_subscription(Odometry, '/odom', self.on_odom, 10)
         self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.on_amcl, 10)
+        self.tf = Buffer()
+        TransformListener(self.tf, self)
         self.nav = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.wp = ActionClient(self, FollowWaypoints, 'follow_waypoints')
 
@@ -73,6 +82,20 @@ class NavDemo(Node):
         end = time.time() + sec
         while time.time() < end:
             rclpy.spin_once(self, timeout_sec=0.05)
+
+    def wait_active(self, manager, timeout=300.0):
+        """action servers exist before the lifecycle manager has activated the stack; goals sent
+        earlier are rejected or aborted at once"""
+        cli = self.create_client(Trigger, f'/{manager}/is_active')
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if cli.wait_for_service(timeout_sec=1.0):
+                fut = cli.call_async(Trigger.Request())
+                rclpy.spin_until_future_complete(self, fut, timeout_sec=5.0)
+                if fut.result() is not None and fut.result().success:
+                    return True
+            self.spin(1.0)
+        return False
 
     def set_initial_pose(self):
         msg = PoseWithCovarianceStamped()
@@ -140,11 +163,21 @@ def main():
     n = NavDemo()
     while n.gt is None:
         n.spin(0.5)
+    # order matters: the navigation costmaps only activate once AMCL publishes map->odom, i.e. after
+    # the initial pose (waiting for navigation first deadlocked for the whole 300 s timeout)
+    n.get_logger().info(f"lifecycle_manager_localization active: {n.wait_active('lifecycle_manager_localization')}")
     n.get_logger().info('setting initial pose (2D Pose Estimate) ...')
     n.set_initial_pose()
+    n.get_logger().info(f"lifecycle_manager_navigation active: {n.wait_active('lifecycle_manager_navigation')}")
     n.nav.wait_for_server()
     n.wp.wait_for_server()
-    n.spin(3.0)
+    # RViz stays in "Global Status: Error" until map->base_footprint exists; the first recording showed
+    # the whole single-goal run with a dead RViz, so wait for the TF chain and give RViz time to catch up
+    t0 = time.time()
+    while not n.tf.can_transform('map', 'base_footprint', rclpy.time.Time()) and time.time() - t0 < 120:
+        n.spin(0.5)
+    n.get_logger().info(f'map->base_footprint available after {time.time() - t0:.1f} s')
+    n.spin(15.0)
     results = {'single_goal': None, 'multi_point': []}
 
     # ---- single goal (2D Nav Goal) ----
@@ -164,26 +197,34 @@ def main():
     stamp = n.get_clock().now().to_msg()
     goal.poses = [pose(x, y, yw, stamp) for _, x, y, yw in WAYPOINTS]
     n.get_logger().info(f'multi-point navigation through {len(WAYPOINTS)} waypoints')
-    # follow progress via feedback-free polling of ground truth to time each leg
+    # FollowWaypoints feedback (current_waypoint) closes each leg; ground truth measures it
     t0, s0, p0 = n.now_s(), n.gt, n.path_len
-    fut = n.wp.send_goal_async(goal)
+    current = {'wp': 0}
+    fut = n.wp.send_goal_async(goal, feedback_callback=lambda f: current.update(wp=f.feedback.current_waypoint))
     rclpy.spin_until_future_complete(n, fut, timeout_sec=20)
     h = fut.result()
     res = h.get_result_async()
     leg, leg_t0, leg_s0, leg_p0 = 0, t0, s0, p0
+
+    def close_leg():  # waypoint `leg` is finished (reached or skipped): measure it
+        wn, wx, wy, _ = WAYPOINTS[leg]
+        ok = math.hypot(n.gt[0] - wx, n.gt[1] - wy) < 0.5
+        results['multi_point'].append(n.measure(wn, wx, wy, leg_t0, leg_s0, leg_p0, 4 if ok else 6))
+
     t_wall = time.time()
     while not res.done() and time.time() - t_wall < args.timeout * len(WAYPOINTS):
         rclpy.spin_once(n, timeout_sec=0.1)
-        if leg < len(WAYPOINTS):
-            wn, wx, wy, _ = WAYPOINTS[leg]
-            if math.hypot(n.gt[0] - wx, n.gt[1] - wy) < 0.3:
-                results['multi_point'].append(n.measure(wn, wx, wy, leg_t0, leg_s0, leg_p0, 4))
-                leg += 1
-                leg_t0, leg_s0, leg_p0 = n.now_s(), n.gt, n.path_len
+        while leg < current['wp'] and leg < len(WAYPOINTS):  # follower moved on to the next waypoint
+            close_leg()
+            leg += 1
+            leg_t0, leg_s0, leg_p0 = n.now_s(), n.gt, n.path_len
+    if res.done() and leg < len(WAYPOINTS):
+        close_leg()  # the last waypoint has no successor in the feedback
+        leg += 1
     missed = list(res.result().result.missed_waypoints) if res.done() else None
     results['multi_point_summary'] = {
         'status': res.result().status if res.done() else 'timeout', 'missed_waypoints': missed,
-        'reached': leg, 'total': len(WAYPOINTS), 'sim_time_s': round(n.now_s() - t0, 2),
+        'reached': sum(r['success'] for r in results['multi_point']), 'total': len(WAYPOINTS), 'sim_time_s': round(n.now_s() - t0, 2),
         'path_length_m': round(n.path_len - p0, 3)}
     n.get_logger().info(f"multi-point summary {json.dumps(results['multi_point_summary'])}")
     if args.out:

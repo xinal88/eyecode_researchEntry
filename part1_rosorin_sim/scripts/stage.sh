@@ -58,9 +58,14 @@ place() {  # place <window-name-regex> x y w h
 
 record_start() {
   [ "${RECORD:-0}" = 1 ] || return 0
-  ffmpeg -y -loglevel error -f x11grab -video_size 1920x1080 -framerate "$REC_FPS" -i :99 \
-    -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p "$MEDIA/$1.mp4" &
+  # libx264 with its default thread count (one per core) stalled at 0.6 fps on a memory-pressured
+  # host and the recordings ended up with a single frame; 2 threads + ultrafast keeps up easily
+  ffmpeg -y -loglevel error -progress "$LOGS/ffmpeg_$1.progress" -f x11grab -video_size 1920x1080 -framerate "$REC_FPS" -i :99 \
+    -c:v libx264 -preset ultrafast -threads 2 -crf 26 -pix_fmt yuv420p "$MEDIA/$1.mp4" </dev/null &
   REC_PID=$!
+  # on a loaded host ffmpeg can need tens of seconds before the first encoded frame; a short demo
+  # started right away was over before anything was recorded (01_teleop: 3 frames)
+  for _ in $(seq 1 60); do [ "$(stat -c %s "$MEDIA/$1.mp4" 2>/dev/null || echo 0)" -gt 20000 ] && break; sleep 1; done
 }
 
 record_stop() {
@@ -72,7 +77,11 @@ record_stop() {
 cleanup() {
   record_stop 2>/dev/null || true
   pkill -INT -f "ros2 launch" || true; sleep 3
-  pkill -9 -f "ign gazebo|ruby|rviz2|parameter_bridge|slam_toolbox|nav2|amcl|map_server|robot_state_publisher|joint_state_publisher|component_container|lifecycle_manager|static_transform" || true
+  # also the launch processes and their spawner/create children: SIGINT did not stop them (they piled up stage after stage), and a
+  # leftover `create -allow_renaming true` can spawn an extra robot into the next stage's world
+  local pat="ros2 launch|spawner|_sim/create|_gazebo/create|ros2 topic hz|ign gazebo|ruby|rviz2|parameter_bridge|slam_toolbox|nav2|amcl|map_server|robot_state_publisher|joint_state_publisher|component_container|lifecycle_manager|static_transform"
+  pkill -9 -f "$pat" || true
+  for _ in $(seq 1 20); do pgrep -f "$pat" >/dev/null || break; sleep 1; done
 }
 
 launch_world() {  # extra args forwarded to room_worlds.launch.py

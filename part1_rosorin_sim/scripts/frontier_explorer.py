@@ -16,12 +16,13 @@ from collections import deque
 
 import numpy as np
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
+from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformListener
 
 MIN_CLUSTER = 10      # cells (0.05 m) -> ignore tiny frontier specks
@@ -71,18 +72,51 @@ class Explorer(Node):
         self.odom_path = 0.0
         self.last_xy = None
         self.create_subscription(Odometry, '/odom', self.on_odom, 10)
+        self.yaw = None
         self.tf = Buffer()
         TransformListener(self.tf, self)
         self.nav = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.nav_active = self.create_client(Trigger, '/lifecycle_manager_navigation/is_active')
+        self.cmd = self.create_publisher(Twist, '/cmd_vel', 10)  # nav:=true routes /cmd_vel to the robot
 
     def on_map(self, m):
         self.map = m
 
     def on_odom(self, m):
-        p = m.pose.pose.position
+        p, q = m.pose.pose.position, m.pose.pose.orientation
         if self.last_xy is not None:
             self.odom_path += math.hypot(p.x - self.last_xy[0], p.y - self.last_xy[1])
         self.last_xy = (p.x, p.y)
+        self.yaw = math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+
+    def wait_nav_active(self, timeout=300.0):
+        """navigate_to_pose exists before the lifecycle manager has activated the costmaps; goals sent
+        in that window are rejected/aborted at once (on a fast host the first frontier was lost so)."""
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            if self.nav_active.wait_for_service(timeout_sec=1.0):
+                fut = self.nav_active.call_async(Trigger.Request())
+                rclpy.spin_until_future_complete(self, fut, timeout_sec=5.0)
+                if fut.result() is not None and fut.result().success:
+                    return True
+            rclpy.spin_once(self, timeout_sec=1.0)
+        return False
+
+    def spin_in_place(self, wz=0.6, timeout=120.0):
+        """one full turn before exploring: the MS200 sees only 156 deg, so at the spawn pose the map is a
+        ~4 m^2 wedge with a single frontier"""
+        while self.yaw is None:
+            rclpy.spin_once(self, timeout_sec=0.2)
+        turned, last, t0 = 0.0, self.yaw, time.time()
+        tw = Twist()
+        tw.angular.z = wz
+        while turned < 2 * math.pi and time.time() - t0 < timeout:
+            self.cmd.publish(tw)
+            rclpy.spin_once(self, timeout_sec=0.05)
+            turned += abs(math.atan2(math.sin(self.yaw - last), math.cos(self.yaw - last)))
+            last = self.yaw
+        self.cmd.publish(Twist())
+        return turned
 
     def robot_xy(self):
         try:
@@ -164,7 +198,10 @@ def main():
     while n.map is None or n.robot_xy() is None:
         rclpy.spin_once(n, timeout_sec=0.5)
     n.nav.wait_for_server()
+    n.get_logger().info(f'Nav2 active: {n.wait_nav_active()}')
+    n.get_logger().info(f'initial spin: {math.degrees(n.spin_in_place()):.0f} deg')
     t_start, blacklist, log, empty_rounds = time.time(), [], [], 0
+    fast_fails = 0
     while time.time() - t_start < args.budget:
         for _ in range(10):
             rclpy.spin_once(n, timeout_sec=0.1)
@@ -178,8 +215,15 @@ def main():
             continue
         empty_rounds = 0
         n.get_logger().info(f'goal {goal[0]:+.2f},{goal[1]:+.2f}  ({n_frontiers} frontier clusters)')
+        t_goal = time.time()
         ok = n.go(*goal, timeout=args.goal_timeout)
         log.append({'goal': goal, 'ok': ok, 't': time.time() - t_start, 'frontiers': n_frontiers})
+        if not ok and time.time() - t_goal < 5.0 and fast_fails < 5:
+            # rejected/aborted at once (planner or costmap not ready yet): retry instead of
+            # black-listing what may be the only frontier
+            fast_fails += 1
+            time.sleep(3.0)
+            continue
         # visited or failed, never pick the same spot twice: a frontier that stays open after the
         # robot stood on it (e.g. behind furniture the LiDAR cannot see past) would loop forever
         blacklist.append(goal[:2])

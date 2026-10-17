@@ -12,3 +12,5 @@ part1_rosorin_sim/ws/install/
 part1_rosorin_sim/ws/log/
 part1_rosorin_sim/logs/
 *.log
+# raw stage recordings (long); only the cut demo media/part1_demo.mp4 is committed
+part1_rosorin_sim/media/0[123]_*.mp4

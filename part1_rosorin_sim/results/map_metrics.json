@@ -1,0 +1,9 @@
+{
+  "occupied_precision@10cm": 0.996,
+  "occupied_recall@10cm": 0.998,
+  "free_space_iou": 0.965,
+  "known_area_m2_ours": 74.05,
+  "known_area_m2_reference": 73.39,
+  "free_area_m2_ours": 68.43,
+  "free_area_m2_reference": 68.8
+}

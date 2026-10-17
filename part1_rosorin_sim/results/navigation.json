@@ -1,0 +1,96 @@
+{
+  "single_goal": {
+    "goal": "dining room",
+    "target": [
+      2.11,
+      0.58
+    ],
+    "success": true,
+    "status": 4,
+    "sim_time_s": 10.56,
+    "path_length_m": 2.057,
+    "straight_line_m": 2.188,
+    "final_error_m": 0.15,
+    "amcl_error_m": 0.287
+  },
+  "multi_point": [
+    {
+      "goal": "left hall",
+      "target": [
+        -3.2,
+        -0.2
+      ],
+      "success": true,
+      "status": 4,
+      "sim_time_s": 27.81,
+      "path_length_m": 5.352,
+      "straight_line_m": 5.22,
+      "final_error_m": 0.135,
+      "amcl_error_m": 0.256
+    },
+    {
+      "goal": "bottom-left room",
+      "target": [
+        -2.44,
+        -1.27
+      ],
+      "success": true,
+      "status": 4,
+      "sim_time_s": 8.28,
+      "path_length_m": 1.194,
+      "straight_line_m": 1.194,
+      "final_error_m": 0.219,
+      "amcl_error_m": 0.072
+    },
+    {
+      "goal": "bottom corridor",
+      "target": [
+        0.01,
+        -2.92
+      ],
+      "success": true,
+      "status": 4,
+      "sim_time_s": 18.42,
+      "path_length_m": 3.217,
+      "straight_line_m": 3.164,
+      "final_error_m": 0.186,
+      "amcl_error_m": 0.073
+    },
+    {
+      "goal": "right room",
+      "target": [
+        2.6,
+        -1.4
+      ],
+      "success": true,
+      "status": 4,
+      "sim_time_s": 17.04,
+      "path_length_m": 3.162,
+      "straight_line_m": 3.059,
+      "final_error_m": 0.203,
+      "amcl_error_m": 0.238
+    },
+    {
+      "goal": "start",
+      "target": [
+        0.0,
+        0.0
+      ],
+      "success": true,
+      "status": 4,
+      "sim_time_s": 18.18,
+      "path_length_m": 3.049,
+      "straight_line_m": 2.909,
+      "final_error_m": 0.228,
+      "amcl_error_m": 0.066
+    }
+  ],
+  "multi_point_summary": {
+    "status": 4,
+    "missed_waypoints": [],
+    "reached": 5,
+    "total": 5,
+    "sim_time_s": 89.73,
+    "path_length_m": 15.975
+  }
+}
