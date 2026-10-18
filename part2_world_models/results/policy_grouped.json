@@ -1,15 +1,15 @@
 [
   {
     "config": "real25",
-    "seeds": 4,
+    "seeds": 8,
     "n_real": 25,
     "n_neural": 0,
-    "coverage_mean": 0.5258910529241636,
-    "coverage_std": 0.027723943733318768,
-    "success": 0.1,
-    "success_lo": 0.06566994117157123,
-    "success_hi": 0.14940686356308552,
-    "episodes": 200
+    "coverage_mean": 0.5223150639258927,
+    "coverage_std": 0.045800030939174466,
+    "success": 0.085,
+    "success_lo": 0.061462653163424086,
+    "success_hi": 0.11643283853431088,
+    "episodes": 400
   },
   {
     "config": "real25_dream100",
@@ -25,15 +25,15 @@
   },
   {
     "config": "real25_dream300",
-    "seeds": 3,
+    "seeds": 8,
     "n_real": 25,
     "n_neural": 300,
-    "coverage_mean": 0.6270812289210261,
-    "coverage_std": 0.018785885382376355,
-    "success": 0.10666666666666667,
-    "success_lo": 0.06672979536363804,
-    "success_hi": 0.16624750076432737,
-    "episodes": 150
+    "coverage_mean": 0.5826392782747511,
+    "coverage_std": 0.049206694317102256,
+    "success": 0.11,
+    "success_lo": 0.08296824650193971,
+    "success_hi": 0.14445161316581123,
+    "episodes": 400
   },
   {
     "config": "real25_dream1000",
@@ -73,15 +73,15 @@
   },
   {
     "config": "dream300_only",
-    "seeds": 1,
+    "seeds": 2,
     "n_real": 0,
     "n_neural": 300,
-    "coverage_mean": 0.20816105957455555,
-    "coverage_std": 0.0,
+    "coverage_mean": 0.19467021548811747,
+    "coverage_std": 0.01907893467490158,
     "success": 0.0,
     "success_lo": 0.0,
-    "success_hi": 0.07135003417431873,
-    "episodes": 50
+    "success_hi": 0.03699480747600191,
+    "episodes": 100
   },
   {
     "config": "real186_upper",

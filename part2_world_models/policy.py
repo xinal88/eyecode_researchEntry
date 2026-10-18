@@ -249,6 +249,8 @@ def main():
     ap.add_argument("--bs", type=int, default=64)
     ap.add_argument("--eval_eps", type=int, default=50)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--eval_only", action="store_true",
+                    help="skip training, evaluate checkpoints/policy_<name>.pt (e.g. a run whose eval crashed)")
     args = ap.parse_args()
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
@@ -263,6 +265,15 @@ def main():
     sets = [TrajData(t) for t in (real, neural) if t]
     print(f"[{args.name}] real trajs {len(real)}  neural trajs {len(neural)}  "
           f"transitions {[len(s) for s in sets]}", flush=True)
+    if args.eval_only:
+        ema = DiffusionPolicy().cuda().eval()
+        ema.load_state_dict(torch.load(CKPT / f"policy_{args.name}.pt", map_location="cuda"))
+        res = evaluate(ema, args.eval_eps, save_dir=out)
+        res.update({"name": args.name, "n_real": len(real), "n_neural": len(neural), "steps": args.steps,
+                    "eval_only": True})
+        json.dump(res, open(out / "eval.json", "w"), indent=2)
+        print(f"[{args.name}] SUCCESS {res['success_rate']:.3f}  mean max coverage {res['mean_max_coverage']:.3f}", flush=True)
+        return
 
     pol = DiffusionPolicy().cuda()
     ema = copy.deepcopy(pol).eval()

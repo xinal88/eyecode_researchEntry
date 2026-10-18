@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from scipy.stats import fisher_exact, mannwhitneyu  # noqa: E402
 
 from common import RESULTS, episodes, judge_video  # noqa: E402
 
@@ -138,6 +139,25 @@ def main():
                       f"{r['coverage_mean']:.3f} ± {r['coverage_std']:.3f} | "
                       f"{r['success']:.3f} [{r['success_lo']:.2f}, {r['success_hi']:.2f}] (n={r['episodes']}) |")
         md.append("")
+        # significance vs. the real-only baseline: pooled-episode success (Fisher exact) and per-seed
+        # coverage (Mann-Whitney U, only with >= 3 seeds on both sides)
+        base = groups.get("real25")
+        if base:
+            bk = sum(sum(e["per_episode_success"]) for e in base)
+            bn = sum(e["n_episodes"] for e in base)
+            bc = [e["mean_max_coverage"] for e in base]
+            md += ["### Difference to real25 (two-sided tests)\n",
+                   "| config | seeds | success diff | Fisher p | coverage diff | Mann-Whitney p (per-seed coverage) |",
+                   "|---|---|---|---|---|---|"]
+            for r in rows[1:]:
+                es = groups[r["config"]]
+                k_ = sum(sum(e["per_episode_success"]) for e in es)
+                p_f = fisher_exact([[k_, r["episodes"] - k_], [bk, bn - bk]])[1]
+                cov = [e["mean_max_coverage"] for e in es]
+                p_u = f"{mannwhitneyu(cov, bc).pvalue:.3f}" if len(cov) >= 3 and len(bc) >= 3 else "n/a (< 3 seeds)"
+                md.append(f"| {r['config']} | {r['seeds']} vs {len(base)} | {r['success'] - bk / bn:+.3f} | {p_f:.3f} | "
+                          f"{r['coverage_mean'] - np.mean(bc):+.3f} | {p_u} |")
+            md.append("")
         json.dump(rows, open(RESULTS / "policy_grouped.json", "w"), indent=2)
         # figure: grouped coverage, seeds as dots; the DreamGen config is the accent
         fig, ax = plt.subplots(figsize=(7.5, 0.42 * len(rows) + 1.3))

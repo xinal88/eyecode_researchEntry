@@ -18,12 +18,14 @@ closed-loop policy evaluation is cheap and exact (the PushT simulator):
 
 Data split (LeRobot `lerobot/pusht`, 206 human demos, 10 fps, 96×96): **target** 25 demos (the only real data the
 policy, IDM and fine-tune see), **pretrain** 161 demos (stand-in for the web-scale pre-training of Cosmos/WAN),
-**val** 20 demos (world-model / IDM metrics only). See `data/splits.json`.
+**val** 20 demos (world-model / IDM metrics only). See `data/splits.json`, written by `make_splits.py` (seeded
+permutation; verified bit-exact against the val clips of the original world-model run).
 
 ## Reproduce
 ```bash
 # from the repo root; python 3.12 venv with torch (CUDA), see requirements.txt
 python part2_world_models/prepare_pusht.py                       # decode dataset -> data/pusht_96.npz
+python part2_world_models/make_splits.py                         # -> data/splits.json (target/val/pretrain)
 python part2_world_models/eval_cosmos_tokenizer.py --sizes 96 128 192 256   # Cosmos tokenizer PSNR/SSIM
 cd part2_world_models
 python idm.py train --split target --steps 8000                                   # step 3 model
@@ -34,7 +36,7 @@ python dream.py --wm wm_ft --n 1000 --bs 50 --chunks 4 --steps 25 --out dreams_w
 python dream.py --wm wm_scratch --n 300 --out dreams_wm_scratch
 python policy.py --name real25 --real target                                      # step 4 baselines / variants
 python policy.py --name real25_dream300 --real target --dreams dreams_wm_ft --n_dreams 300
-bash run_queue.sh <gpu> A|B        # the full policy grid (resumable, run inside tmux)
+PY=/path/to/python bash run_queue.sh <gpu> A|B|C|D|E   # the full policy grid (resumable, run inside tmux)
 python analyze.py                  # -> results/SUMMARY.md + results/figures/*.png
 ```
 Downloads: `lerobot/pusht` (7.7 MB) and `nvidia/Cosmos-0.1-Tokenizer-CV4x8x8` encoder/decoder JIT (147 MB).

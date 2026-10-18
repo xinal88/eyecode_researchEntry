@@ -3,7 +3,7 @@
 # whose results/policy/<name>/eval.json already exists. Launch inside tmux, e.g.
 #   tmux new -d -s p2_gpu6 'bash run_queue.sh 6 A 2>&1 | tee logs/queue_gpu6.log'
 cd "$(dirname "$0")"
-PY=../.venv/bin/python
+PY=${PY:-../.venv/bin/python}  # override with PY=/path/to/python
 export CUDA_VISIBLE_DEVICES=$1
 D="--dreams dreams_wm_ft"
 case $2 in
@@ -21,6 +21,15 @@ B) JOBS=("real25_dream100 --real target $D --n_dreams 100"
          "real25_dream300pa_s1 --real target $D --n_dreams 1000 --min_pa 0.53 --seed 1") ;;
 C) JOBS=("real25_s4 --real target --seed 4"
          "real25_dream300_s4 --real target $D --n_dreams 300 --seed 4") ;;
+# second server: evaluate the two runs whose eval crashed (no ffmpeg), then 3 more seeds per arm
+D) JOBS=("real25_dream300_s2 --real target $D --n_dreams 300 --seed 2 --eval_only"
+         "dream300_only_s1 $D --n_dreams 300 --seed 1 --eval_only"
+         "real25_s5 --real target --seed 5"
+         "real25_dream300_s5 --real target $D --n_dreams 300 --seed 5"
+         "real25_s7 --real target --seed 7") ;;
+E) JOBS=("real25_s6 --real target --seed 6"
+         "real25_dream300_s6 --real target $D --n_dreams 300 --seed 6"
+         "real25_dream300_s7 --real target $D --n_dreams 300 --seed 7") ;;
 esac
 run() {
   local name=${1%% *}
