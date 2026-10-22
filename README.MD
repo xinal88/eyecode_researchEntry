@@ -6,6 +6,7 @@ Submission for the EyeCode research entry task (topic: World Models).
 |---|---|---|
 | 1 | ROSOrin Pro Gazebo simulation: run & control the robot, LiDAR/IMU/camera visualisation, SLAM mapping, map saving, single-goal and multi-point autonomous navigation | [`part1_rosorin_sim/`](part1_rosorin_sim/README.md) |
 | 2 | Paper reading (DreamGen, Cosmos) + small-scale reproduction of the DreamGen pipeline on top of the official Cosmos Tokenizer, with quantitative evaluation | [`part2_world_models/`](part2_world_models/README.md) |
+| — | Demo videos: Part 1 (4 min, simulation) and Part 2 (83 s, dreams / rollouts / results) | [`part1_demo.mp4`](part1_rosorin_sim/media/part1_demo.mp4), [`part2_demo.mp4`](part2_world_models/results/part2_demo.mp4) |
 | — | Technical report (PDF / DOCX) | [`report/`](report/) |
 
 ## Repository layout

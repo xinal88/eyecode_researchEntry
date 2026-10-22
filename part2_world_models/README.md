@@ -38,11 +38,13 @@ python policy.py --name real25 --real target                                    
 python policy.py --name real25_dream300 --real target --dreams dreams_wm_ft --n_dreams 300
 PY=/path/to/python bash run_queue.sh <gpu> A|B|C|D|E   # the full policy grid (resumable, run inside tmux)
 python analyze.py                  # -> results/SUMMARY.md + results/figures/*.png
+python make_demo_video.py          # -> results/part2_demo.mp4
 ```
 Downloads: `lerobot/pusht` (7.7 MB) and `nvidia/Cosmos-0.1-Tokenizer-CV4x8x8` encoder/decoder JIT (147 MB).
 Compute used: one shared RTX 5880 Ada (48 GB); world model ≈ 0.35 s/step, each policy run ≈ 30 min.
 
 ## Outputs
+* `results/part2_demo.mp4` — 83 s demo video: real demo vs. dreams, judge scores, failure cases, policy rollouts, results
 * `results/SUMMARY.md` — all tables (tokenizer, IDM, world model, judge, policies with 95 % CIs)
 * `results/figures/` — policy bar chart, world-model validation curve
 * `results/world_model/*/val_step*.png` — real (top) vs generated (bottom) futures on held-out demos
